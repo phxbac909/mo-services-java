@@ -574,9 +574,12 @@ public abstract class CppGeneratorLangs extends GeneratorBase {
 
         // TBD: Cần sinh hàm Encode / Decode cho class này giống như CppCompositeClass
         // vì nó kế thừa từ mo::mal::Element
+        // ======================= SỬA ĐOẠN ENCODE / DECODE NÀY =======================
         MethodWriter encodeMethod = encodeMethodOpen(file);
         for (int i = 0; i < argsList.size(); i++) {
-            encodeMethod.addLine("encoder.encodeNullableElement(this->" + argsList.get(i).getFieldName() + ");");
+            CompositeField element = argsList.get(i);
+            String call = element.getEncodeCall() != null ? element.getEncodeCall() : "Element";
+            encodeMethod.addLine("encoder->encodeNullable" + call + "(this->" + element.getFieldName() + ");");
         }
         encodeMethod.addMethodCloseStatement();
 
@@ -584,12 +587,21 @@ public abstract class CppGeneratorLangs extends GeneratorBase {
                 TypeUtils.createTypeReference(StdStrings.MAL, null, StdStrings.ELEMENT, false), true, true, null);
         MethodWriter decodeMethod = decodeMethodOpen(file, elemType);
         for (int i = 0; i < argsList.size(); i++) {
-            CompositeField argType = argsList.get(i);
-            String cppType = argType.getTypeName(); // Lấy kiểu thật của argument
-            decodeMethod.addLine("this->" + argType.getFieldName() + " = std::dynamic_pointer_cast<" + cppType + ">(decoder.decodeNullableElement());");
+            CompositeField element = argsList.get(i);
+            String cppType = element.getTypeName();
+            String call = element.getDecodeCall() != null ? element.getDecodeCall() : "Element";
+            boolean isNative = isNativeType(cppType) && !getNativeType(cppType).isObject();
+
+            if (isNative) {
+                decodeMethod.addLine("this->" + element.getFieldName() + " = decoder->decodeNullable" + call + "();");
+            } else {
+                String castType = cppType.replace("std::shared_ptr<", "").replace(">", "");
+                decodeMethod.addLine("this->" + element.getFieldName() + " = std::dynamic_pointer_cast<" + castType + ">(decoder->decodeNullable" + call + "());");
+            }
         }
         decodeMethod.addLine("return std::make_shared<" + returnTypeInfo.getShortName() + ">(*this);");
         decodeMethod.addMethodCloseStatement();
+        // ============================================================================
 
         file.addClassCloseStatement();
         file.flush();

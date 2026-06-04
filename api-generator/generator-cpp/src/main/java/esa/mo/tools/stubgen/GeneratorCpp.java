@@ -32,13 +32,14 @@ public class GeneratorCpp extends CppGeneratorLangs {
     public GeneratorCpp(org.apache.maven.plugin.logging.Log logger) {
         super(logger,
                 new GeneratorConfiguration(
-                        "mo::mal::", "structures", "factory", "body", "::", "nullptr",
+                        "::mo::",
+                        "structures", "factory", "body", "::", "nullptr",
                         "MALSendOperation", "MALSubmitOperation", "MALRequestOperation",
                         "MALInvokeOperation", "MALProgressOperation", "MALPubSubOperation"));
     }
 
     @Override
-    public String getShortName() { return "CPP"; }
+    public String getShortName() { return "CPP1"; }
 
     @Override
     public String getDescription() { return "Generates a C++ (C++11) language mapping based on CCSDS 523.2-M-1."; }

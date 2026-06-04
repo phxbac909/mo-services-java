@@ -43,23 +43,22 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
     private int namespaceCount = 0; // Đếm số lượng namespace để đóng '}' cho đúng
 
     public CppClassWriter(File folder, String className, GeneratorCpp generator) throws IOException {
-        this.className = className;
+        // Chỉ lấy tên file, bỏ đi đường dẫn (nếu có)
+        this.className = className.substring(className.lastIndexOf('/') + 1).substring(className.lastIndexOf('.') + 1);
         this.generator = generator;
         this.hppFile = StubUtils.createLowLevelWriter(folder, className, GeneratorCpp.CPP_HEADER_EXT);
         this.cppFile = StubUtils.createLowLevelWriter(folder, className, GeneratorCpp.CPP_SOURCE_EXT);
-        
         writeHeaderGuardsAndIncludes();
     }
 
     public CppClassWriter(String destinationFolderName, String className, GeneratorCpp generator) throws IOException {
-        this.className = className;
+        // Chỉ lấy tên file, bỏ đi đường dẫn (nếu có)
+        this.className = className.substring(className.lastIndexOf('/') + 1).substring(className.lastIndexOf('.') + 1);
         this.generator = generator;
         this.hppFile = StubUtils.createLowLevelWriter(destinationFolderName, className, GeneratorCpp.CPP_HEADER_EXT);
         this.cppFile = StubUtils.createLowLevelWriter(destinationFolderName, className, GeneratorCpp.CPP_SOURCE_EXT);
-        
         writeHeaderGuardsAndIncludes();
     }
-
     private void writeHeaderGuardsAndIncludes() throws IOException {
         String guard = "_" + className.toUpperCase() + "_HPP_";
         hppFile.append("#ifndef ").append(guard).append("\n");
@@ -346,17 +345,16 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
 
     @Override
     public void addLine(String line) throws IOException {
-        // Lệnh null/new của Java cần thay thế cho C++
-        line = line.replace(" null", " nullptr");
-        
-        // Đơn giản hóa việc bắt một số cấu trúc new Object() -> std::make_shared<Object>()
+        // Tránh lỗi biến "nullptr" thành "nullptrptr"
+//        if (line.contains(" null") && !line.contains("nullptr")) {
+//            line = line.replace(" null", " nullptr");
+//        }
+
         if (line.contains("new ")) {
             line = line.replaceAll("new ([A-Za-z0-9_:]+)\\((.*?)\\)", "std::make_shared<$1>($2)");
         }
-
         cppFile.append(makeLine(1, line));
     }
-
     @Override
     public void addArrayMethodStatement(String arrayVariable, String indexVariable, String arrayMaxSize) throws IOException {
         cppFile.append(makeLine(1, "return " + arrayVariable + "[" + indexVariable + "];"));
@@ -391,16 +389,18 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
      */
     private String createLocalType(CompositeField type, boolean isArgument, boolean isReturn) {
         if (type == null) return "void";
-        
+
         String typeName = formatTypeNamespace(type.getTypeName());
-        
-        // Loại bỏ các tàn dư của Java
         typeName = typeName.replace(".ElementList", "::HeterogeneousList");
+
+        // Nếu kiểu dữ liệu ĐÃ LÀ std::shared_ptr rồi thì KHÔNG bọc thêm nữa
+        if (typeName.contains("std::shared_ptr")) {
+            return isArgument ? "const " + typeName + "&" : typeName;
+        }
 
         if (generator.isNativeType(typeName)) {
             NativeTypeDetails dets = generator.getNativeType(typeName);
             if (!dets.isObject()) {
-                // Kiểu nguyên thủy (int32_t, bool...) -> Truyền giá trị
                 if (type.isList()) {
                     return isArgument ? "const std::vector<" + typeName + ">&" : "std::vector<" + typeName + ">";
                 }
@@ -408,7 +408,6 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
             }
         }
 
-        // Với các Object, Element của MAL
         if (type.isList()) {
             String vectorType = "std::vector<std::shared_ptr<" + typeName + ">>";
             return isArgument ? "const " + vectorType + "&" : vectorType;
@@ -417,7 +416,6 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
             return isArgument ? "const " + ptrType + "&" : ptrType;
         }
     }
-
     private String formatTypeNamespace(String type) {
         if (type == null) return null;
         return type.replace(".", "::");
@@ -476,5 +474,8 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
     public void addStatement(String string) throws IOException {
         // addStatement của JavaClassWriter mặc định ghi vào class body (tương đương .hpp của C++)
         hppFile.append(makeLine(1, string));
+    }
+    public void addIncludeStatement(String includePath) throws IOException {
+        cppFile.append("#include \"").append(includePath).append("\"\n");
     }
 }

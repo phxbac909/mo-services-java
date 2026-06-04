@@ -121,7 +121,9 @@ public class CppCompositeClass {
         }
 
         for (CompositeField element : compElements) {
-            method.addLine("encoder.encodeNullableElement(this->" + element.getFieldName() + ");");
+            String call = element.getEncodeCall() != null ? element.getEncodeCall() : "Element";
+            // SỬA: Dùng encoder-> thay vì encoder.
+            method.addLine("encoder->encodeNullable" + call + "(this->" + element.getFieldName() + ");");
         }
         method.addMethodCloseStatement();
     }
@@ -136,8 +138,20 @@ public class CppCompositeClass {
         }
 
         for (CompositeField element : compElements) {
-            String cppType = element.getTypeName(); // vd: shared_ptr<String>
-            method.addLine("this->" + element.getFieldName() + " = std::dynamic_pointer_cast<" + cppType + ">(decoder.decodeNullableElement());");
+            String cppType = element.getTypeName();
+            String call = element.getDecodeCall() != null ? element.getDecodeCall() : "Element";
+
+            // Nếu là kiểu nguyên thủy (int32_t, bool), KHÔNG được dùng dynamic_pointer_cast
+            boolean isNative = generator.isNativeType(cppType) && !generator.getNativeType(cppType).isObject();
+
+            if (isNative) {
+                // SỬA: Gọi thẳng hàm decode của kiểu nguyên thủy (VD: decodeNullableLong)
+                method.addLine("this->" + element.getFieldName() + " = decoder->decodeNullable" + call + "();");
+            } else {
+                // SỬA: Dùng decoder-> và loại bỏ chữ std::shared_ptr<> bên trong cast để chuẩn cú pháp C++
+                String castType = cppType.replace("std::shared_ptr<", "").replace(">", "");
+                method.addLine("this->" + element.getFieldName() + " = std::dynamic_pointer_cast<" + castType + ">(decoder->decodeNullable" + call + "());");
+            }
         }
         method.addLine("return std::make_shared<" + className + ">(*this);");
         method.addMethodCloseStatement();

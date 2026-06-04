@@ -1,6 +1,6 @@
 package esa.mo.tools.stubgen.cpp;
 
-import esa.mo.tools.stubgen.CppGeneratorLangs; // Import đúng class C++ mới
+import esa.mo.tools.stubgen.CppGeneratorLangs;
 import esa.mo.tools.stubgen.specification.FieldInfo;
 import esa.mo.tools.stubgen.specification.OperationSummary;
 import esa.mo.tools.stubgen.specification.ServiceSummary;
@@ -23,9 +23,6 @@ public class CppHelpers {
         this.generator = generator;
     }
 
-    // =========================================================================
-    // 1. AREA HELPER
-    // =========================================================================
     public void createAreaHelperClass(File areaFolder, AreaType area) throws IOException {
         String areaName = area.getName();
         String helperClassName = areaName + "Helper";
@@ -34,6 +31,12 @@ public class CppHelpers {
         ClassWriter file = generator.createClassFile(areaFolder, helperClassName);
         file.addPackageStatement(areaName, null, null);
 
+        // THÊM: Include các file gốc của MAL Framework
+        CppClassWriter cppWriter = (CppClassWriter) file;
+        cppWriter.addIncludeStatement("mo/mal/MALArea.hpp");
+        cppWriter.addIncludeStatement("mo/mal/Identifier.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALElementFactoryRegistry.hpp");
+
         file.addClassOpenStatement(helperClassName, false, false, null, null, "Helper class for " + areaName + " area.");
 
         file.addStatement("public:");
@@ -41,7 +44,9 @@ public class CppHelpers {
         file.addStatement("    static const uint16_t " + areaCaps + "_AREA_NUMBER = " + area.getNumber() + ";");
         file.addStatement("    static const uint8_t " + areaCaps + "_AREA_VERSION = " + area.getVersion() + ";");
         file.addStatement("    static const char* const " + areaCaps + "_AREA_NAME;");
-        file.addStatement("    static std::shared_ptr<mo::mal::MALArea> " + areaCaps + "_AREA;");
+
+        // SỬA: Bỏ mal:: bị dư
+        file.addStatement("    static std::shared_ptr<::mo::mal::MALArea> " + areaCaps + "_AREA;");
 
         if (area.getErrors() != null && !area.getErrors().getError().isEmpty()) {
             for (ErrorDefinitionType error : area.getErrors().getError()) {
@@ -51,20 +56,19 @@ public class CppHelpers {
             }
         }
 
-        // LỖI 2 ĐƯỢC SỬA Ở ĐÂY: Dùng addSourceStatement để ghi vào file .cpp
-        CppClassWriter cppWriter = (CppClassWriter) file;
         cppWriter.addSourceStatement("const char* const " + helperClassName + "::" + areaCaps + "_AREA_NAME = \"" + areaName + "\";");
-        cppWriter.addSourceStatement("std::shared_ptr<mo::mal::MALArea> " + helperClassName + "::" + areaCaps + "_AREA = nullptr;");
+        cppWriter.addSourceStatement("std::shared_ptr<::mo::mal::MALArea> " + helperClassName + "::" + areaCaps + "_AREA = nullptr;");
 
-        String regFactoryType = "std::shared_ptr<mo::mal::MALElementFactoryRegistry>";
+        // SỬA: Sửa lại Type truyền vào hàm init để tránh tạo thành mo::mal::mal
+        String regFactoryType = "::mo::mal::MALElementFactoryRegistry";
         MethodWriter initMethod = file.addMethodOpenStatement(false, true, "public", false, false, null, "init",
                 java.util.Arrays.asList(generator.createCompositeElementsDetails(file, false, "elementFactoryRegistry",
-                        TypeUtils.createTypeReference(null, null, regFactoryType, false), false, false, null)), null);
+                        TypeUtils.createTypeReference(null, null, "std::shared_ptr<" + regFactoryType + ">", false), false, false, null)), null);
 
         initMethod.addLine("if (" + areaCaps + "_AREA == nullptr) {");
-        initMethod.addLine("    " + areaCaps + "_AREA = std::make_shared<mo::mal::MALArea>(");
+        initMethod.addLine("    " + areaCaps + "_AREA = std::make_shared<::mo::mal::MALArea>(");
         initMethod.addLine("        " + areaCaps + "_AREA_NUMBER,");
-        initMethod.addLine("        std::make_shared<mo::mal::Identifier>(" + areaCaps + "_AREA_NAME),");
+        initMethod.addLine("        std::make_shared<::mo::mal::Identifier>(" + areaCaps + "_AREA_NAME),");
         initMethod.addLine("        " + areaCaps + "_AREA_VERSION);");
         initMethod.addLine("}");
         initMethod.addMethodCloseStatement();
@@ -73,9 +77,6 @@ public class CppHelpers {
         file.flush();
     }
 
-    // =========================================================================
-    // 2. SERVICE HELPER
-    // =========================================================================
     public void createServiceHelperClass(File serviceFolder, String areaName, ServiceType service, ServiceSummary summary) throws IOException {
         String serviceName = service.getName();
         String helperClassName = serviceName + "Helper";
@@ -83,6 +84,20 @@ public class CppHelpers {
 
         ClassWriter file = generator.createClassFile(serviceFolder, helperClassName);
         file.addPackageStatement(areaName, serviceName, null);
+
+        CppClassWriter cppWriter = (CppClassWriter) file;
+        cppWriter.addIncludeStatement("mo/mal/MALService.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALOperationStage.hpp");
+        cppWriter.addIncludeStatement("mo/mal/Identifier.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALElementFactoryRegistry.hpp");
+        // Include Operation types
+        cppWriter.addIncludeStatement("mo/mal/MALSendOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALSubmitOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALRequestOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALInvokeOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALProgressOperation.hpp");
+        cppWriter.addIncludeStatement("mo/mal/MALPubSubOperation.hpp");
 
         file.addClassOpenStatement(helperClassName, false, false, null, null, "Helper class for " + serviceName + " service.");
 
@@ -99,46 +114,43 @@ public class CppHelpers {
             }
         }
 
-        file.addStatement("    static std::shared_ptr<mo::mal::MALService> " + serviceCaps + "_SERVICE;");
+        file.addStatement("    static std::shared_ptr<::mo::mal::MALService> " + serviceCaps + "_SERVICE;");
 
         for (OperationSummary op : summary.getOperations()) {
             String opCaps = op.getName().toUpperCase();
             file.addStatement("    static const int32_t _" + opCaps + "_OP_NUMBER = " + op.getNumber() + ";");
             file.addStatement("    static const uint16_t " + opCaps + "_OP_NUMBER = " + op.getNumber() + ";");
 
-            // LỖI 1 ĐÃ ĐƯỢC GIẢI QUYẾT TỰ ĐỘNG BỞI CppGeneratorLangs
-            String opTypeName = "mo::mal::" + generator.getOperationInstanceType(op);
+            String opTypeName = "::mo::mal::" + generator.getOperationInstanceType(op);
             file.addStatement("    static std::shared_ptr<" + opTypeName + "> " + opCaps + "_OP;");
         }
 
-        // LỖI 2 ĐƯỢC SỬA: Ép kiểu để xuất global definitions ra .cpp
-        CppClassWriter cppWriter = (CppClassWriter) file;
         cppWriter.addSourceStatement("const char* const " + helperClassName + "::" + serviceCaps + "_SERVICE_NAME = \"" + serviceName + "\";");
-        cppWriter.addSourceStatement("std::shared_ptr<mo::mal::MALService> " + helperClassName + "::" + serviceCaps + "_SERVICE = nullptr;");
+        cppWriter.addSourceStatement("std::shared_ptr<::mo::mal::MALService> " + helperClassName + "::" + serviceCaps + "_SERVICE = nullptr;");
 
         for (OperationSummary op : summary.getOperations()) {
-            String opTypeName = "mo::mal::" + generator.getOperationInstanceType(op);
+            String opTypeName = "::mo::mal::" + generator.getOperationInstanceType(op);
             cppWriter.addSourceStatement("std::shared_ptr<" + opTypeName + "> " + helperClassName + "::" + op.getName().toUpperCase() + "_OP = nullptr;");
         }
 
-        String regFactoryType = "std::shared_ptr<mo::mal::MALElementFactoryRegistry>";
+        String regFactoryType = "::mo::mal::MALElementFactoryRegistry";
         MethodWriter initMethod = file.addMethodOpenStatement(false, true, "public", false, false, null, "init",
                 java.util.Arrays.asList(generator.createCompositeElementsDetails(file, false, "elementFactoryRegistry",
-                        TypeUtils.createTypeReference(null, null, regFactoryType, false), false, false, null)), null);
+                        TypeUtils.createTypeReference(null, null, "std::shared_ptr<" + regFactoryType + ">", false), false, false, null)), null);
 
         initMethod.addLine("if (" + serviceCaps + "_SERVICE == nullptr) {");
-        initMethod.addLine("    " + serviceCaps + "_SERVICE = std::make_shared<mo::mal::MALService>(");
+        initMethod.addLine("    " + serviceCaps + "_SERVICE = std::make_shared<::mo::mal::MALService>(");
         initMethod.addLine("        " + serviceCaps + "_SERVICE_NUMBER,");
-        initMethod.addLine("        std::make_shared<mo::mal::Identifier>(" + serviceCaps + "_SERVICE_NAME));");
+        initMethod.addLine("        std::make_shared<::mo::mal::Identifier>(" + serviceCaps + "_SERVICE_NAME));");
 
         for (OperationSummary op : summary.getOperations()) {
             String opCaps = op.getName().toUpperCase();
-            String opTypeName = "mo::mal::" + generator.getOperationInstanceType(op);
+            String opTypeName = "::mo::mal::" + generator.getOperationInstanceType(op);
             String capSet = (op.getSet() != null) ? op.getSet().toString() : "1";
 
             initMethod.addLine("    " + opCaps + "_OP = std::make_shared<" + opTypeName + ">(");
             initMethod.addLine("        " + opCaps + "_OP_NUMBER,");
-            initMethod.addLine("        std::make_shared<mo::mal::Identifier>(\"" + op.getName() + "\"),");
+            initMethod.addLine("        std::make_shared<::mo::mal::Identifier>(\"" + op.getName() + "\"),");
             initMethod.addLine("        " + (op.getReplay() ? "true" : "false") + ",");
             initMethod.addLine("        " + capSet + ",");
             generateOperationStages(initMethod, op);
@@ -157,22 +169,22 @@ public class CppHelpers {
         switch (op.getPattern()) {
             case SEND_OP:
             case SUBMIT_OP:
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>())");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>())");
                 break;
             case REQUEST_OP:
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
                 break;
             case INVOKE_OP:
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getAckTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(3, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getAckTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(3, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
                 break;
             case PROGRESS_OP:
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getAckTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(3, " + generateShortFormVector(op.getUpdateTypes()) + ", std::vector<int64_t>()),");
-                method.addLine("        std::make_shared<mo::mal::MALOperationStage>(4, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(1, " + generateShortFormVector(op.getArgTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(2, " + generateShortFormVector(op.getAckTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(3, " + generateShortFormVector(op.getUpdateTypes()) + ", std::vector<int64_t>()),");
+                method.addLine("        std::make_shared<::mo::mal::MALOperationStage>(4, " + generateShortFormVector(op.getRetTypes()) + ", std::vector<int64_t>())");
                 break;
             case PUBSUB_OP:
                 method.addLine("        " + generateShortFormVector(op.getRetTypes()) + ", // Update Short Forms");

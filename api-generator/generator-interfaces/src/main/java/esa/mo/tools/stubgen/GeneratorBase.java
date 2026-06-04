@@ -778,4 +778,9 @@ public abstract class GeneratorBase implements Generator, TypeInformation {
     public GeneratorConfiguration getConfig() {
         return config;
     }
+
+    // Sẽ implement tạo CompositeField ở GeneratorCpp chính
+    public abstract CompositeField createCompositeElementsDetails(Object file, boolean checkType, String fieldName,
+                                                                  TypeReference elementType, boolean isStructure,
+                                                                  boolean canBeNull, String comment);
 }

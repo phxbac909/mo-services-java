@@ -346,7 +346,7 @@ public class StubGenerator extends AbstractMojo {
         }
 
         // if the directoy containing the xml specifications exists
-        if (xmlDirectory.exists()) {
+        if ( xmlDirectory.exists()) {
             // load in any reference specifications
             String steps = "Step 0.. ";
             try {

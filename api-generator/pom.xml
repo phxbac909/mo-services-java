@@ -70,5 +70,6 @@
         <module>generator-java</module>
         <module>generator-docs</module>
         <module>api-generator-maven-plugin</module>
+        <module>generator-cpp</module>
     </modules>
 </project>

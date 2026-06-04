@@ -411,6 +411,11 @@ public class GeneratorJava extends GeneratorLangs {
     }
 
     @Override
+    public CompositeField createCompositeElementsDetails(Object file, boolean checkType, String fieldName, TypeReference elementType, boolean isStructure, boolean canBeNull, String comment) {
+        return null;
+    }
+
+    @Override
     protected String malStringAsElement(LanguageWriter file) {
         return createElementType(StdStrings.MAL, null, StdStrings.UNION);
     }

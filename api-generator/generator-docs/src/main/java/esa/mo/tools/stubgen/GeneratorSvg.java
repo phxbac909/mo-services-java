@@ -115,6 +115,11 @@ public class GeneratorSvg extends GeneratorDocument {
     }
 
     @Override
+    public CompositeField createCompositeElementsDetails(Object file, boolean checkType, String fieldName, TypeReference elementType, boolean isStructure, boolean canBeNull, String comment) {
+        return null;
+    }
+
+    @Override
     public void generate(String destinationFolderName, XmlSpecification xml,
             JAXBElement rootNode) throws IOException, JAXBException {
         SpecificationType spec = xml.getSpecType();

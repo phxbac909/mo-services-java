@@ -80,7 +80,11 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
         namespaces.add("mo");
         namespaces.add("mal");
 
-        if (area != null && !area.isEmpty()) namespaces.add(area.toLowerCase());
+        // SỬA Ở ĐÂY: Nếu area là MAL, ta không thêm vào nữa để tránh lặp mo::mal::mal
+        if (area != null && !area.isEmpty() && !area.equalsIgnoreCase("MAL")) {
+            namespaces.add(area.toLowerCase());
+        }
+
         if (service != null && !service.isEmpty()) namespaces.add(service.toLowerCase());
         if (extraPackage != null && !extraPackage.isEmpty()) namespaces.add(extraPackage.toLowerCase());
 
@@ -89,8 +93,7 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
             nsBuilder.append("namespace ").append(ns).append(" {\n");
             namespaceCount++;
         }
-        
-        // Ghi khai báo namespace vào cả 2 file
+
         hppFile.append(nsBuilder.toString()).append("\n");
         cppFile.append(nsBuilder.toString()).append("\n");
     }
@@ -392,6 +395,9 @@ public class CppClassWriter extends AbstractLanguageWriter implements ClassWrite
 
         String typeName = formatTypeNamespace(type.getTypeName());
         typeName = typeName.replace(".ElementList", "::HeterogeneousList");
+
+        // SỬA Ở ĐÂY: Dọn dẹp lỗi lặp mo::mal::mal nếu có
+        typeName = typeName.replace("::mo::mal::mal::", "::mo::mal::");
 
         // Nếu kiểu dữ liệu ĐÃ LÀ std::shared_ptr rồi thì KHÔNG bọc thêm nữa
         if (typeName.contains("std::shared_ptr")) {

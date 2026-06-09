@@ -28,30 +28,44 @@ public class CppExceptions {
         }
     }
 
+    // =========================================================================
+    // HÀM HELPER COPY TỪ JAVA ĐỂ ĐẢM BẢO TÊN FILE GIỐNG 100%
+    // =========================================================================
+    public static String convertToCamelCase(String text) {
+        // Is the Error in the old style? With all Upper Case and underscores?
+        if (text.equals(text.toUpperCase())) {
+            StringBuilder all = new StringBuilder();
+            for (String part : text.split("_")) {
+                if (part.isEmpty()) continue;
+                StringBuilder camelCase = new StringBuilder(part.toLowerCase());
+                camelCase.setCharAt(0, Character.toUpperCase(part.charAt(0)));
+                all.append(camelCase.toString());
+            }
+            return all.toString();
+        }
+        return text.replace(" ", "").replace("_", "");
+    }
+
     private void generateException(File folder, String areaName, ErrorDefinitionType error) throws IOException {
         String errorName = error.getName();
-        String className = errorName.replace(" ", "") + "Exception";
+
+        // SỬA Ở ĐÂY: Dùng hàm convertToCamelCase để chuẩn hóa tên
+        String className = convertToCamelCase(errorName) + "Exception";
+
         String errorCaps = errorName.toUpperCase().replace(" ", "_");
 
         ClassWriter file = generator.createClassFile(folder, className);
         file.addPackageStatement(areaName, null, null);
 
         CppClassWriter cppWriter = (CppClassWriter) file;
-
-        // THÊM: Include file Area Helper để có biến ERROR_NUMBER
         cppWriter.addIncludeStatement(areaName + "Helper.hpp");
-
-        // THÊM: C++ bắt buộc phải include header của class cha để có thể kế thừa
         cppWriter.addIncludeStatement("mo/mal/MOErrorException.hpp");
 
-        // LỚP CHA: Dùng đường dẫn chuẩn ::mo::mal::MOErrorException
         String extendsClass = "::mo::mal::MOErrorException";
         file.addClassOpenStatement(className, false, false, extendsClass, null, "Exception class for " + errorName);
 
         CompositeField errNumField = generator.createCompositeElementsDetails(file, false, "errorNumber",
                 TypeUtils.createTypeReference(null, null, "uint32_t", false), false, false, null);
-
-        // SỬA: Sửa Element thành ::mo::mal::Element để chuẩn xác
         CompositeField extraInfoField = generator.createCompositeElementsDetails(file, false, "extraInformation",
                 TypeUtils.createTypeReference(null, null, "std::shared_ptr<::mo::mal::Element>", false), false, true, null);
 

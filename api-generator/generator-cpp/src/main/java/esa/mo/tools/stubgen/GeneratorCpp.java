@@ -39,7 +39,7 @@ public class GeneratorCpp extends CppGeneratorLangs {
     }
 
     @Override
-    public String getShortName() { return "CPP1"; }
+    public String getShortName() { return "Cpp"; }
 
     @Override
     public String getDescription() { return "Generates a C++ (C++11) language mapping based on CCSDS 523.2-M-1."; }
@@ -50,25 +50,26 @@ public class GeneratorCpp extends CppGeneratorLangs {
         super.init(destinationFolderName, generateStructures, generateCOM, packageBindings, extraProperties);
 
         addAttributeType(StdStrings.MAL, StdStrings.BLOB, false, "Blob", "nullptr");
-        addAttributeType(StdStrings.MAL, StdStrings.BOOLEAN, true, "bool", "false");
-        addAttributeType(StdStrings.MAL, StdStrings.DOUBLE, true, "double", "0.0");
-        addAttributeType(StdStrings.MAL, StdStrings.DURATION, true, "double", "0.0");
-        addAttributeType(StdStrings.MAL, StdStrings.FLOAT, true, "float", "0.0f");
-        addAttributeType(StdStrings.MAL, StdStrings.INTEGER, true, "int32_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.IDENTIFIER, false, "std::string", "\"\"");
-        addAttributeType(StdStrings.MAL, StdStrings.LONG, true, "int64_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.OCTET, true, "int8_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.SHORT, true, "int16_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.UINTEGER, true, "uint32_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.ULONG, true, "uint64_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.UOCTET, true, "uint8_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.USHORT, true, "uint16_t", "0");
-        addAttributeType(StdStrings.MAL, StdStrings.STRING, false, "std::string", "\"\"");
-        addAttributeType(StdStrings.MAL, StdStrings.TIME, false, "MALTimeData", "nullptr");
-        addAttributeType(StdStrings.MAL, StdStrings.FINETIME, false, "MALFineTimeData", "nullptr");
-        addAttributeType(StdStrings.MAL, StdStrings.URI, false, "std::string", "\"\"");
+        addAttributeType(StdStrings.MAL, StdStrings.BOOLEAN, false, "Boolean", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.DOUBLE, false, "Double", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.DURATION, false, "Duration", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.FLOAT, false, "Float", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.INTEGER, false, "Integer", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.IDENTIFIER, false, "Identifier", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.LONG, false, "Long", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.OCTET, false, "Octet", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.SHORT, false, "Short", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.UINTEGER, false, "UInteger", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.ULONG, false, "ULong", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.UOCTET, false, "UOctet", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.USHORT, false, "UShort", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.STRING, false, "String", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.TIME, false, "Time", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.FINETIME, false, "FineTime", "nullptr");
+        addAttributeType(StdStrings.MAL, StdStrings.URI, false, "URI", "nullptr");
         addAttributeType(StdStrings.MAL, StdStrings.OBJECTREF, false, "ObjectRef", "nullptr");
 
+        // Các kiểu native của C++ (Dùng cho vector/map hoặc logic nội bộ của generator)
         super.addNativeType("bool", new NativeTypeDetails("bool", false, false, null));
         super.addNativeType("std::string", new NativeTypeDetails("std::string", false, false, "<string>"));
         super.addNativeType("int8_t", new NativeTypeDetails("int8_t", false, false, "<cstdint>"));
@@ -81,6 +82,7 @@ public class GeneratorCpp extends CppGeneratorLangs {
         super.addNativeType("uint64_t", new NativeTypeDetails("uint64_t", false, false, "<cstdint>"));
         super.addNativeType("float", new NativeTypeDetails("float", false, false, null));
         super.addNativeType("double", new NativeTypeDetails("double", false, false, null));
+
         super.addNativeType("Vector", new NativeTypeDetails("std::vector", true, true, "<vector>"));
         super.addNativeType("Map", new NativeTypeDetails("std::map", true, true, "<map>"));
     }
@@ -127,7 +129,14 @@ public class GeneratorCpp extends CppGeneratorLangs {
     @Override
     public void createListClass(File folder, AreaType area, ServiceType service, String srcTypeName, boolean isAbstract, Integer shortFormPart) throws IOException {
         CppLists cppLists = new CppLists(this);
-        if (!isAbstract) { cppLists.createHomogeneousListClass(folder, area, service, srcTypeName, shortFormPart); }
+        if (isAbstract) {
+            // NẾU LÀ ABSTRACT -> Gọi Heterogeneous (không dùng shortFormPart)
+            String serviceName = (service != null) ? service.getName() : null;
+            cppLists.createHeterogeneousListClass(folder, area.getName(), serviceName, srcTypeName);
+        } else {
+            // NẾU LÀ CONCRETE -> Gọi Homogeneous
+            cppLists.createHomogeneousListClass(folder, area, service, srcTypeName, shortFormPart);
+        }
     }
 
 

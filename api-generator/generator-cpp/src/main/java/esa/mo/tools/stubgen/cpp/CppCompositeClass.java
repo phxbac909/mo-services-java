@@ -77,8 +77,7 @@ public class CppCompositeClass {
         file.flush();
 
         // Sinh List class kèm theo
-        CppLists listsGen = new CppLists(generator);
-        listsGen.createHomogeneousListClass(folder, area, service, className, composite.getShortFormPart());
+        generator.createListClass(folder, area, service, className, abstractComposite, composite.getShortFormPart());
     }
 
     private void createTypedConstructor(ClassWriter file, String className, List<CompositeField> superCompElements, List<CompositeField> compElements) throws IOException {

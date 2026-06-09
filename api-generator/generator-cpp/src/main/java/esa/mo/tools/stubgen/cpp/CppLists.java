@@ -69,4 +69,33 @@ public class CppLists {
         file.addClassCloseStatement();
         file.flush();
     }
+    // Thêm hàm này vào trong class CppLists
+    public void createHeterogeneousListClass(File folder, String areaName, String serviceName, String srcTypeName) throws IOException {
+        String listName = srcTypeName + "List";
+        String fqSrcTypeName = generator.createElementType(areaName, serviceName, srcTypeName);
+
+        ClassWriter file = generator.createClassFile(folder, listName);
+        file.addPackageStatement(areaName, serviceName, generator.getConfig().getStructureFolder());
+
+        // Kế thừa vector nhưng KHÔNG có ShortForm vì nó là Abstract
+        String extendsStr = "std::vector<std::shared_ptr<" + fqSrcTypeName + ">>";
+        String implementsStr = generator.convertToNamespace("mo::mal::ElementList");
+
+        file.addClassOpenStatement(listName, false, false, extendsStr, implementsStr, "Heterogeneous List class for abstract type " + srcTypeName + ".");
+
+        // Constructors cơ bản
+        file.addConstructorDefault(listName);
+
+        MethodWriter method = file.addConstructor("public", listName,
+                generator.createCompositeElementsDetails(file, false, "initialCapacity",
+                        TypeUtils.createTypeReference(null, null, "int32_t", false), false, false, "The required initial capacity."),
+                false, null, "Constructor that initialises the capacity of the list.", null);
+        method.addLine("this->reserve(initialCapacity);");
+        method.addMethodCloseStatement();
+
+        // Với Abstract List, không cần ghi đè encode/decode vì MAL framework sẽ tự dynamic_cast từng phần tử.
+
+        file.addClassCloseStatement();
+        file.flush();
+    }
 }
